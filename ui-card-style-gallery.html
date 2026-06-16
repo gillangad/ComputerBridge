@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ComputerBridge Proposed Card Colors</title>
+  <style>
+    :root {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --green: #22c55e;
+      --red: #ef4444;
+      --light-chatgpt-bg: #ffffff;
+      --light-card-bg: #fbfbfa;
+      --light-card-head: #f7f7f8;
+      --light-card-body: #ffffff;
+      --light-card-line: rgb(15 23 42 / 10%);
+      --light-card-text: #18181b;
+      --light-card-muted: #71717a;
+      --light-card-pill: #ffffff;
+      --dark-chatgpt-bg: #0d0d0d;
+      --dark-card-bg: #151515;
+      --dark-card-head: #1c1c1c;
+      --dark-card-body: #101010;
+      --dark-card-line: rgb(255 255 255 / 7%);
+      --dark-card-text: #f4f4f5;
+      --dark-card-muted: #a1a1aa;
+      --dark-card-pill: #181818;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 100vh;
+    }
+
+    .side {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 22px;
+      padding: 48px;
+    }
+
+    .light {
+      background: var(--light-chatgpt-bg);
+      color: var(--light-card-text);
+    }
+
+    .dark {
+      background: var(--dark-chatgpt-bg);
+      color: var(--dark-card-text);
+    }
+
+    .label {
+      max-width: 720px;
+    }
+
+    h1, h2, p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 24px;
+      letter-spacing: -0.03em;
+      margin-bottom: 8px;
+    }
+
+    p {
+      color: var(--muted);
+      line-height: 1.5;
+      max-width: 620px;
+    }
+
+    .light p { --muted: var(--light-card-muted); }
+    .dark p { --muted: var(--dark-card-muted); }
+
+    .card {
+      width: min(100%, 760px);
+      overflow: hidden;
+      border: 0;
+      border-radius: 18px;
+      font: 13px/1.45 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    }
+
+    .light .card {
+      background: var(--light-card-bg);
+      color: var(--light-card-text);
+      box-shadow:
+        inset 0 0 0 1px var(--light-card-line),
+        0 10px 28px rgb(15 23 42 / 8%);
+    }
+
+    .dark .card {
+      background: var(--dark-card-bg);
+      color: var(--dark-card-text);
+      box-shadow:
+        inset 0 0 0 1px var(--dark-card-line),
+        0 10px 28px rgb(0 0 0 / 22%);
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 70px;
+      padding: 14px 18px;
+    }
+
+    .light .header {
+      background: var(--light-card-head);
+      box-shadow: inset 0 -1px 0 var(--light-card-line);
+    }
+
+    .dark .header {
+      background: var(--dark-card-head);
+      box-shadow: inset 0 -1px 0 var(--dark-card-line);
+    }
+
+    .title {
+      font: 700 15px/1.2 Inter, ui-sans-serif, system-ui, sans-serif;
+      letter-spacing: -0.01em;
+    }
+
+    .sub {
+      margin-top: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .light .sub { color: var(--light-card-muted); }
+    .dark .sub { color: var(--dark-card-muted); }
+
+    .pills {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
+    .pill {
+      border-radius: 999px;
+      padding: 5px 10px;
+      box-shadow: inset 0 0 0 1px currentColor;
+    }
+
+    .light .pill {
+      background: var(--light-card-pill);
+      color: #475569;
+    }
+
+    .dark .pill {
+      background: var(--dark-card-pill);
+      color: #d4d4d8;
+    }
+
+    .pill.add { color: var(--green); }
+    .pill.remove { color: var(--red); }
+
+    .chevron {
+      font: 16px/1 Inter, ui-sans-serif, system-ui, sans-serif;
+      color: currentColor;
+      opacity: .65;
+    }
+
+    .body {
+      padding: 14px 18px 18px;
+    }
+
+    .light .body { background: var(--light-card-body); }
+    .dark .body { background: var(--dark-card-body); }
+
+    .diff-row {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      margin-inline: -18px;
+      padding: 4px 18px;
+    }
+
+    .diff-row.add {
+      background: rgb(34 197 94 / 15%);
+      box-shadow: inset 4px 0 0 rgb(34 197 94 / 90%);
+    }
+
+    .diff-row.remove {
+      background: rgb(239 68 68 / 14%);
+      box-shadow: inset 4px 0 0 rgb(239 68 68 / 90%);
+    }
+
+    .line {
+      text-align: right;
+      padding-right: 14px;
+    }
+
+    .light .line { color: #64748b; }
+    .dark .line { color: #8b8b90; }
+
+    .tokens {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      width: min(100%, 760px);
+      font: 12px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+
+    .token {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 10px;
+      border-radius: 12px;
+    }
+
+    .light .token {
+      background: #f6f6f5;
+      color: #3f3f46;
+    }
+
+    .dark .token {
+      background: #171717;
+      color: #d4d4d8;
+    }
+
+    .swatch {
+      width: 28px;
+      height: 18px;
+      border-radius: 6px;
+      box-shadow: inset 0 0 0 1px rgb(128 128 128 / 28%);
+      flex: 0 0 auto;
+    }
+
+    @media (max-width: 960px) {
+      .split { grid-template-columns: 1fr; }
+      .side { padding: 32px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="split">
+    <section class="side light">
+      <div class="label">
+        <h1>Light Mode Proposal</h1>
+        <p>Neutral paper colors on a ChatGPT-style white background. No hard border, only a soft internal hairline and light shadow.</p>
+      </div>
+
+      <article class="card">
+        <div class="header">
+          <div>
+            <div class="title">tool_report.md</div>
+            <div class="sub">~/Projects/test</div>
+          </div>
+          <div class="pills">
+            <span class="pill add">+4</span>
+            <span class="pill">1 added</span>
+            <span class="chevron">⌄</span>
+          </div>
+        </div>
+        <div class="body">
+          <div class="diff-row add"><span class="line">1</span><span>+ # ComputerBridge Smoke Test</span></div>
+          <div class="diff-row add"><span class="line">2</span><span>+ Created from ChatGPT.</span></div>
+          <div class="diff-row add"><span class="line">3</span><span>+ All tools passed.</span></div>
+        </div>
+      </article>
+
+      <div class="tokens">
+        <div class="token"><span>ChatGPT bg</span><span>#ffffff</span><span class="swatch" style="background:#ffffff"></span></div>
+        <div class="token"><span>Card bg</span><span>#fbfbfa</span><span class="swatch" style="background:#fbfbfa"></span></div>
+        <div class="token"><span>Header</span><span>#f7f7f8</span><span class="swatch" style="background:#f7f7f8"></span></div>
+        <div class="token"><span>Body</span><span>#ffffff</span><span class="swatch" style="background:#ffffff"></span></div>
+        <div class="token"><span>Text</span><span>#18181b</span><span class="swatch" style="background:#18181b"></span></div>
+        <div class="token"><span>Muted</span><span>#71717a</span><span class="swatch" style="background:#71717a"></span></div>
+      </div>
+    </section>
+
+    <section class="side dark">
+      <div class="label">
+        <h1>Dark Mode Proposal</h1>
+        <p>Neutral charcoal colors on a ChatGPT-style near-black background. This avoids the blue-purple cast from the current cards.</p>
+      </div>
+
+      <article class="card">
+        <div class="header">
+          <div>
+            <div class="title">tool_report.md</div>
+            <div class="sub">~/Projects/test</div>
+          </div>
+          <div class="pills">
+            <span class="pill add">+4</span>
+            <span class="pill">1 added</span>
+            <span class="chevron">⌄</span>
+          </div>
+        </div>
+        <div class="body">
+          <div class="diff-row remove"><span class="line">8</span><span>- view_image: pending</span></div>
+          <div class="diff-row add"><span class="line">8</span><span>+ view_image: passed</span></div>
+          <div class="diff-row add"><span class="line">9</span><span>+ write_stdin: passed</span></div>
+        </div>
+      </article>
+
+      <div class="tokens">
+        <div class="token"><span>ChatGPT bg</span><span>#0d0d0d</span><span class="swatch" style="background:#0d0d0d"></span></div>
+        <div class="token"><span>Card bg</span><span>#151515</span><span class="swatch" style="background:#151515"></span></div>
+        <div class="token"><span>Header</span><span>#1c1c1c</span><span class="swatch" style="background:#1c1c1c"></span></div>
+        <div class="token"><span>Body</span><span>#101010</span><span class="swatch" style="background:#101010"></span></div>
+        <div class="token"><span>Text</span><span>#f4f4f5</span><span class="swatch" style="background:#f4f4f5"></span></div>
+        <div class="token"><span>Muted</span><span>#a1a1aa</span><span class="swatch" style="background:#a1a1aa"></span></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
