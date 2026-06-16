@@ -22,7 +22,7 @@ from typing import Any, Literal
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import ToolAnnotations
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 mcp = FastMCP(
@@ -482,6 +482,12 @@ def coding_card_html(kind: str, title: str) -> str:
     }}
     .patch-file {{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
     .patch-delta {{ white-space: nowrap; }}
+    .diff-empty {{
+      margin: 0;
+      padding: 10px 14px;
+      color: var(--muted);
+      font: 12.5px/1.45 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    }}
     .grid {{ display: grid; gap: 8px; padding: 12px 14px; background: var(--panel-2); }}
     .row {{ display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 7px; }}
     .row:last-child {{ border-bottom: 0; padding-bottom: 0; }}
@@ -601,12 +607,21 @@ def coding_card_html(kind: str, title: str) -> str:
     function renderDiff(changes) {{
       const rows = (changes || []).map((change, index) => {{
         const action = String(change.action || "");
-        const cls = action === "add" ? "added" : action === "delete" ? "removed" : "";
-        const sign = action === "add" ? "+" : action === "delete" ? "-" : "~";
         const file = change.file_name || basename(change.path);
         const parent = compactPath(change.parent || dirname(change.path));
+        const displayLines = change.display_lines || [];
+        const diff = displayLines.length
+          ? `<pre>${{displayLines.map((line) => {{
+              const raw = String(line ?? "");
+              const prefix = raw[0] || " ";
+              const cls = prefix === "+" ? "added" : prefix === "-" ? "removed" : "";
+              const sign = prefix === "+" || prefix === "-" ? prefix : " ";
+              const code = prefix === "+" || prefix === "-" || prefix === " " ? raw.slice(1) : raw;
+              return `<span class="line ${{cls}}"><span class="num">${{esc(sign)}}</span><span class="code">${{highlight(code)}}</span></span>`;
+            }}).join("")}}</pre>`
+          : `<div class="diff-empty">${{esc(action)}} ${{esc(file)}}</div>`;
         return `<div class="patch-head"><span class="patch-file">${{esc(file)}} <span class="comment">${{esc(parent)}}</span></span></div>` +
-          `<pre><span class="line ${{cls}}"><span class="num">${{esc(sign)}}</span><span class="code">${{esc(action.padEnd(7))}} ${{esc(file)}}</span></span></pre>`;
+          diff;
       }}).join("");
       return rows || `<pre>No file changes reported.</pre>`;
     }}
@@ -848,6 +863,7 @@ class PatchChange(BaseModel):
     parent: str
     added_lines: int = 0
     removed_lines: int = 0
+    display_lines: list[str] = Field(default_factory=list)
 
 
 class PatchResult(BaseModel):
@@ -1147,6 +1163,22 @@ def apply_update(original: str, patch_lines: list[str]) -> str:
     return updated
 
 
+def patch_display_lines(action: str, payload: Any, original: str | None = None) -> list[str]:
+    if action == "add":
+        return [f"+{line}" for line in str(payload).splitlines()][:200]
+    if action == "delete":
+        if original is None:
+            return []
+        return [f"-{line}" for line in original.splitlines()][:200]
+    lines = []
+    for line in payload.get("lines", []):
+        if line.startswith("@@") or line == "*** End of File":
+            continue
+        if line[:1] in {"+", "-", " "}:
+            lines.append(line)
+    return lines[:200]
+
+
 @mcp.tool(
     annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False),
     meta=tool_card_meta(PATCH_CARD_URI, "Applying patch", "Patch applied"),
@@ -1168,12 +1200,13 @@ def apply_patch(patch: str, workdir: str | None = None) -> PatchResult:
                 if path.exists():
                     raise ValueError(f"File already exists: {path}")
                 atomic_write(path, payload)
-                changed.append({"action": "add", "path": str(path), "file_name": path.name, "parent": str(path.parent), "added_lines": added_lines, "removed_lines": removed_lines})
+                changed.append({"action": "add", "path": str(path), "file_name": path.name, "parent": str(path.parent), "added_lines": added_lines, "removed_lines": removed_lines, "display_lines": patch_display_lines(action, payload)})
             elif action == "delete":
                 if not path.is_file():
                     raise ValueError(f"File not found: {path}")
+                original = path.read_text(encoding="utf-8")
                 path.unlink()
-                changed.append({"action": "delete", "path": str(path), "file_name": path.name, "parent": str(path.parent), "added_lines": added_lines, "removed_lines": removed_lines})
+                changed.append({"action": "delete", "path": str(path), "file_name": path.name, "parent": str(path.parent), "added_lines": added_lines, "removed_lines": removed_lines, "display_lines": patch_display_lines(action, payload, original)})
             else:
                 original = path.read_text(encoding="utf-8")
                 updated = apply_update(original, payload["lines"])
@@ -1181,7 +1214,7 @@ def apply_patch(patch: str, workdir: str | None = None) -> PatchResult:
                 atomic_write(destination, updated)
                 if destination != path:
                     path.unlink()
-                changed.append({"action": "move" if destination != path else "update", "path": str(destination), "file_name": destination.name, "parent": str(destination.parent), "added_lines": added_lines, "removed_lines": removed_lines})
+                changed.append({"action": "move" if destination != path else "update", "path": str(destination), "file_name": destination.name, "parent": str(destination.parent), "added_lines": added_lines, "removed_lines": removed_lines, "display_lines": patch_display_lines(action, payload)})
     return PatchResult(projects_root=DEFAULT_CWD, changes=[PatchChange(**change) for change in changed], added_lines=total_added, removed_lines=total_removed)
 
 

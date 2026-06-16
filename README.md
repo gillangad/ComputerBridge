@@ -36,7 +36,7 @@ The setup wizard asks for your projects folder, shell, tunnel option, local port
 https://your-public-tunnel.example.com/mcp
 ```
 
-In ChatGPT Developer Mode, create an app/connector with that MCP URL.
+In ChatGPT Developer Mode, create an app/connector with that MCP URL, and select No Auth or Oauth
 
 ## Short Commands
 
