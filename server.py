@@ -4,6 +4,7 @@
 
 import argparse
 import base64
+import ctypes
 import json
 import mimetypes
 import os
@@ -58,6 +59,10 @@ SECRET_PATTERNS = [
     re.compile(r"(?i)(bearer\s+)[A-Za-z0-9._~+\-/=]+"),
 ]
 ANSI_PATTERN = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+ACCESS_APPROVED = False
+ACCESS_LOCK = threading.Lock()
+ACCESS_PROMPT_ACTIVE = False
+ACCESS_PROMPT_TIMEOUT_SECONDS = 120
 
 
 def utc_now() -> str:
@@ -92,6 +97,55 @@ def resolve_path(path: str, workdir: str | None = None) -> Path:
     if not candidate.is_absolute():
         candidate = resolve_base_dir(workdir) / candidate
     return candidate.resolve()
+
+
+def prompt_local_access_approval() -> bool:
+    if os.environ.get("COMPUTERBRIDGE_SKIP_LOCAL_APPROVAL") == "1":
+        return True
+    if os.name == "nt":
+        text = (
+            "A remote ChatGPT connection is trying to use ComputerBridge on this computer.\n\n"
+            "Allow access until ComputerBridge restarts?"
+        )
+        title = "ComputerBridge Access Request"
+        # MB_YESNO | MB_ICONWARNING | MB_SETFOREGROUND | MB_TOPMOST
+        result = ctypes.windll.user32.MessageBoxW(None, text, title, 0x00000004 | 0x00000030 | 0x00010000 | 0x00040000)
+        return result == 6
+
+    print("\nComputerBridge Access Request")
+    print("A remote ChatGPT connection is trying to use this computer.")
+    answer = input("Allow access until ComputerBridge restarts? [y/N]: ").strip().lower()
+    return answer in {"y", "yes"}
+
+
+def require_local_access_approval() -> None:
+    global ACCESS_APPROVED, ACCESS_PROMPT_ACTIVE
+    with ACCESS_LOCK:
+        if ACCESS_APPROVED:
+            return
+        if ACCESS_PROMPT_ACTIVE:
+            raise PermissionError("ComputerBridge is waiting for local approval on this computer. Try again after approving the prompt.")
+        ACCESS_PROMPT_ACTIVE = True
+
+    approved = False
+    try:
+        result: dict[str, bool] = {}
+
+        def ask() -> None:
+            result["approved"] = prompt_local_access_approval()
+
+        thread = threading.Thread(target=ask, daemon=True)
+        thread.start()
+        thread.join(ACCESS_PROMPT_TIMEOUT_SECONDS)
+        approved = bool(result.get("approved", False))
+    finally:
+        with ACCESS_LOCK:
+            ACCESS_PROMPT_ACTIVE = False
+            if approved:
+                ACCESS_APPROVED = True
+
+    if not approved:
+        raise PermissionError("ComputerBridge access was not approved locally.")
 
 
 def atomic_write(path: Path, content: str) -> None:
@@ -1052,6 +1106,7 @@ def exec_command(
     max_output_chars: int = 20_000,
 ) -> ExecResult:
     """Use this when you need to run a project command, test, build, or small inspection command. Paths are resolved from the configured projects root returned as projects_root. Prefer relative workdir values like "test" or "my-project"; avoid broad filesystem discovery and avoid $HOME in workdir. On Windows this uses PowerShell by default; on macOS/Linux it uses the user's shell. If the command is still running after yield_time_ms, a session_id is returned for write_stdin polling/input."""
+    require_local_access_approval()
     return run_manager.start(cmd, workdir, timeout_ms, yield_time_ms, max_output_chars)
 
 
@@ -1067,6 +1122,7 @@ def write_stdin(
     max_output_chars: int = 20_000,
 ) -> ExecResult:
     """Use this when an existing exec_command session is waiting for input or needs to be polled. This does not start a new command, open files, or access the network; it only sends chars to the already-running session_id. Pass empty chars to poll a still-running command."""
+    require_local_access_approval()
     return run_manager.write(session_id, chars, yield_time_ms, max_output_chars)
 
 
@@ -1077,6 +1133,7 @@ def write_stdin(
 )
 def read(path: str, offset: int = 1, limit: int = 500, workdir: str | None = None) -> ReadResult:
     """Use this when you need bounded UTF-8 file contents. Prefer relative path/workdir values from the configured projects root; avoid broad shell discovery and avoid $HOME in workdir. Offset is a 1-indexed line number."""
+    require_local_access_approval()
     file_path = resolve_path(path, workdir or DEFAULT_CWD)
     if not file_path.is_file():
         raise ValueError(f"File not found: {file_path}")
@@ -1186,6 +1243,7 @@ def patch_display_lines(action: str, payload: Any, original: str | None = None) 
 )
 def apply_patch(patch: str, workdir: str | None = None) -> PatchResult:
     """Use this when you need to make a small, targeted Codex-style file edit inside the configured projects root. Prefer relative workdir values and relative patch paths. Avoid absolute paths, broad filesystem operations, and unrelated edits. Supports add, update, move, and delete operations."""
+    require_local_access_approval()
     actions = parse_patch(patch)
     changed = []
     total_added = 0
@@ -1225,6 +1283,7 @@ def apply_patch(patch: str, workdir: str | None = None) -> PatchResult:
 )
 def view_image(path: str, detail: Literal["high", "original"] = "high", workdir: str | None = None) -> ImageResult:
     """Use this when you need to preview a local image file. Prefer relative path/workdir values from the configured projects root; avoid $HOME in workdir."""
+    require_local_access_approval()
     image_path = resolve_path(path, workdir or DEFAULT_CWD)
     if not image_path.is_file():
         raise ValueError(f"Image not found: {image_path}")

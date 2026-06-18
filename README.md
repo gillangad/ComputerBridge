@@ -30,6 +30,8 @@ uv run --with "mcp[cli]" --with rich cli.py setup
 
 The setup wizard asks for your projects folder, shell, tunnel option, local port, public URL, startup preference, and whether to start ComputerBridge immediately.
 
+On the first tool call after ComputerBridge starts, your computer asks for local approval. After you approve, access stays allowed until ComputerBridge restarts.
+
 2) After setup, copy the printed ChatGPT URL. It looks like:
 
 ```text
@@ -91,3 +93,4 @@ Linux:   ~/.local/state/computerbridge/
 - Relative paths are resolved from the configured projects folder.
 - `ngrok` is supported for local testing, but any public HTTPS tunnel can work.
 - If you use a no-auth public tunnel, anyone with that URL can act as the OS user running ComputerBridge, so use no-auth mode only on a device you trust.
+- ComputerBridge still requires one local approval per server restart before tools can run.
